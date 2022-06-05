@@ -17,22 +17,25 @@ import java.util.List;
 @Service
 public class RateService {
 
-    private RateCase prevRates;
+    private RateCase previousRates;
     private RateCase currentRates;
 
-    private CurrencyClient currencyClient;
-    private SimpleDateFormat dateFormat;
-    private SimpleDateFormat timeFormat;
+    private final CurrencyClient currencyClient;
+
+    private final SimpleDateFormat dateFormat;
+    private final SimpleDateFormat timeFormat;
+
     @Value("${openexchangerates.app.id}")
     private String appId;
+
     @Value("${openexchangerates.base}")
     private String base;
 
     @Autowired
     public RateService(
             CurrencyClient currencyClient,
-            @Qualifier("date_bean") SimpleDateFormat dateFormat,
-            @Qualifier("time_bean") SimpleDateFormat timeFormat
+            @Qualifier(value = "date_bean") SimpleDateFormat dateFormat,
+            @Qualifier(value = "time_bean") SimpleDateFormat timeFormat
     ) {
         this.currencyClient = currencyClient;
         this.dateFormat = dateFormat;
@@ -44,17 +47,18 @@ public class RateService {
         if (this.currentRates.getRates() != null) {
             return new ArrayList<>(this.currentRates.getRates().keySet());
         }
-        else return new ArrayList<String>(Integer.parseInt("RUB"));
+        else return new ArrayList<>();
     }
 
 
-    public void refreshRates() {
+    public void updateRates() {
         long currentTime = System.currentTimeMillis();
-        this.refreshCurrentRates(currentTime);
-        this.refreshPrevRates(currentTime);
+        this.updateCurrentRates(currentTime);
+        this.updatePreviousRates(currentTime);
     }
 
-    private void refreshCurrentRates(long time) {
+
+    private void updateCurrentRates(long time) {
         if (
                 this.currentRates == null ||
                         !timeFormat.format(Long.valueOf(this.currentRates.getTimestamp()) * 1000)
@@ -64,23 +68,33 @@ public class RateService {
         }
     }
 
-    private void refreshPrevRates(long time) {
-        Calendar prevCalendar = Calendar.getInstance();
-        prevCalendar.setTimeInMillis(time);
-        String currentDate = dateFormat.format(prevCalendar.getTime());
-        prevCalendar.add(Calendar.DAY_OF_YEAR, -1);
-        String newPrevDate = dateFormat.format(prevCalendar.getTime());
+    private void updatePreviousRates(long time) {
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(time);
+        String today = dateFormat.format(calendar.getTime());
+        calendar.add(Calendar.DAY_OF_YEAR, -1);
+        String yesterday = dateFormat.format(calendar.getTime());
+
         if (
-                this.prevRates == null
+                this.previousRates == null
                         || (
-                        !dateFormat.format(Long.valueOf(this.prevRates.getTimestamp()) * 1000)
-                                .equals(newPrevDate)
-                                && !dateFormat.format(Long.valueOf(this.prevRates.getTimestamp()) * 1000)
-                                .equals(currentDate)
+                        !dateFormat.format(Long.valueOf(this.previousRates.getTimestamp()) * 1000)
+                                .equals(yesterday)
+                                && !dateFormat.format(Long.valueOf(this.previousRates.getTimestamp()) * 1000)
+                                .equals(today)
                 )
         ) {
-            this.prevRates = currencyClient.getHistoricalRates(newPrevDate, appId);
+            this.previousRates = currencyClient.getHistoricalRates(yesterday, appId);
         }
+    }
+
+    public int comparisonStatus(String code) {
+        this.updateRates();
+
+        return previousRates.getRates() != null && currentRates.getRates() != null
+                ? Double.compare(previousRates.getRates().get(code), currentRates.getRates().get(code))
+                : -1;
     }
 
 

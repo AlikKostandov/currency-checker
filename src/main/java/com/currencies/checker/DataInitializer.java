@@ -18,6 +18,6 @@ public class DataInitializer {
 
     @PostConstruct
     public void getDataInit() {
-        rateService.refreshRates();
+        rateService.updateRates();
     }
 }
