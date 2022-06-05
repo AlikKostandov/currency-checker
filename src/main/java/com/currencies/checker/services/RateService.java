@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -92,9 +93,12 @@ public class RateService {
     public int comparisonStatus(String code) {
         this.updateRates();
 
+        Double previous = previousRates.getRates().get(code);
+        Double current = currentRates.getRates().get(code);
+
         return previousRates.getRates() != null && currentRates.getRates() != null
-                ? Double.compare(previousRates.getRates().get(code), currentRates.getRates().get(code))
-                : -1;
+                ? Double.compare(current, previous)
+                : -101;
     }
 
 
